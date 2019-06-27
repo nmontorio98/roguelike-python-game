@@ -5,7 +5,7 @@ def menu(con, header, options, width, screen_width, screen_height):
 
     # calculate total height for the header after auto-wrap and one line per option
     header_height = libtcod.console_get_height_rect(con, 0, 0, width,screen_height, header)
-    height = len(options + header_height)
+    height = len(options) + header_height
 
     # create an off-screen console that represents the menu's window
     window = libtcod.console_new(width, height)

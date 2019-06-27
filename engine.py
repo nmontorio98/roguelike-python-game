@@ -74,16 +74,18 @@ def main():
         if fov_recompute:
             recompute_fov(fov_map, player.x, player.y, fov_radius, fov_light_walls, fov_algorithm)
 
-        render_all(con, panel, entities, player, game_map, fov_map, fov_recompute, message_log, screen_width, screen_height, bar_width, panel_height, panel_y, mouse, colors)
+        render_all(con, panel, entities, player, game_map, fov_map, fov_recompute, message_log, screen_width, screen_height, bar_width, panel_height, panel_y, mouse, colors, game_state)
         libtcod.console_flush()
 
         fov_recompute = False
         clear_all(con, entities)
-        action = handle_keys(key)
+        action = handle_keys(key, game_state)
 
         move = action.get('move')
         pickup = action.get('pickup')
         show_inventory = action.get('show_inventory')
+        inventory_index = action.get('inventory_index')
+        drop_inventory = action.get('drop_inventory')
         exit = action.get('exit')
         fullscreen = action.get("fullscreen")
 
@@ -116,9 +118,21 @@ def main():
         if show_inventory:
             previous_game_state = game_state
             game_state = GameStates.SHOW_INVENTORY
+
+        if inventory_index is not None and previous_game_state != GameStates.PLAYER_DEAD and inventory_index < len(player.inventory.items):
+            item = player.inventory.items[inventory_index]
+            
+            if game_state == GameStates.SHOW_INVENTORY:
+                player_turn_results.extend(player.inventory.use(item))
+            elif game_state == GameStates.DROP_INVENTORY:
+                player_turn_results.extend(player.inventory.drop_item(item))
+
+        if drop_inventory:
+            previous_game_state = game_state
+            game_state = GameStates.DROP_INVENTORY
         
         if exit:
-            if game_state == GameStates.SHOW_INVENTORY:
+            if game_state in (GameStates.SHOW_INVENTORY, GameStates.DROP_INVENTORY):
                 game_state = previous_game_state
             else:
                 return True
@@ -130,6 +144,8 @@ def main():
             message = result.get('message')
             dead_entity = result.get('dead')
             item_added = result.get('item_added')
+            item_dropped = result.get('item_dropped')
+            item_consumed = result.get('consumed')
 
             if message:
                 message_log.add_message(message)
@@ -143,6 +159,13 @@ def main():
             
             if item_added:
                 entities.remove(item_added)
+                game_state = GameStates.ENEMY_TURN
+                
+            if item_dropped:
+                entities.append(item_dropped)
+                game_state = GameStates.ENEMY_TURN
+            
+            if item_consumed:
                 game_state = GameStates.ENEMY_TURN
         
 
